@@ -1,0 +1,15 @@
+{
+  "records": [],
+  "progress": {},
+  "access": {},
+  "students": [],
+  "teacherPin": "1234",
+  "sessionRelease": {
+    "s1": false,
+    "s2": false,
+    "s3": false,
+    "s4": false,
+    "s5": false,
+    "posttest": false
+  }
+}

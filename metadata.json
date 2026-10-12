@@ -1,0 +1,6 @@
+{
+  "name": "GramCo - Sentence Structure & Teacher Score Portal",
+  "description": "An interactive sentence structure learning and feedback aggregation web app with a centralized teacher portal for compiling student scores and multi-device deployment to Render.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
