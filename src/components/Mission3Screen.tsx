@@ -25,13 +25,13 @@ const PRACTICE_ITEMS = [
     exp: 'The dog is ONE animal, so sleeps is correct.',
   },
   {
-    q: 'My dad ___ cooks dinner.',
+    q: 'My dad ___ dinner.',
     options: ['A. cook', 'B. cooks', 'C. cooking'],
     correct: 1,
     exp: 'My dad is ONE person, so cooks agrees with dad.',
   },
   {
-    q: 'The girls ___ run to school.',
+    q: 'The girls ___ to school.',
     options: ['A. runs', 'B. run', 'C. running'],
     correct: 1,
     exp: 'The girls is MORE THAN ONE, so we use the base verb run.',
