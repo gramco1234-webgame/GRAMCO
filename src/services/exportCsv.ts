@@ -19,6 +19,7 @@ export const formatRow = (cells: any[]): string => {
   return cells.map(escapeCell).join(',');
 };
 
+// Formats date only (e.g., "Jul 21, 2026")
 export const formatDateOnly = (dateStr?: string): string => {
   if (!dateStr) return '–';
   const date = new Date(dateStr);
@@ -32,9 +33,39 @@ export const formatDateOnly = (dateStr?: string): string => {
   });
 };
 
+// Formats date + time (e.g., "Jul 21, 2026, 02:35 PM")
+export const formatDateTime = (dateStr?: string): string => {
+  if (!dateStr) return '–';
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return dateStr;
+
+  return date.toLocaleString('en-PH', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+};
+
+// Calculates exact duration between start/access and completion (e.g., "14m 32s")
+export const formatTimeTaken = (startStr?: string, endStr?: string): string => {
+  if (!startStr || !endStr) return '–';
+  const start = new Date(startStr).getTime();
+  const end = new Date(endStr).getTime();
+  if (isNaN(start) || isNaN(end) || end < start) return '–';
+
+  const totalSeconds = Math.floor((end - start) / 1000);
+  const mins = Math.floor(totalSeconds / 60);
+  const secs = totalSeconds % 60;
+  return `${mins}m ${secs}s`;
+};
+
 /**
  * 1. DEDICATED TEST SCORES CSV
- * Contains only Pre-Test and Post-Test scores, gains, dates, and per-skill breakdowns.
+ * Contains only Pre-Test and Post-Test scores, gains, access/finish times, durations, and per-skill breakdowns.
  */
 export function generateTestsCsv(
   records: StudentRecord[],
@@ -46,7 +77,7 @@ export function generateTestsCsv(
   const studentCodes = Object.keys(unifiedMap).sort();
 
   lines.push('=== GRAMCO - TEST ASSESSMENT COMPARISON & SCORES REPORT ===');
-  lines.push(`Generated: ${new Date().toISOString()}`);
+  lines.push(`Generated: ${formatDateTime(new Date().toISOString())}`);
   lines.push('');
 
   const headers = [
@@ -55,10 +86,14 @@ export function generateTestsCsv(
     'Grade & Section',
     'Pre-Test Score (/20)',
     'Pre-Test %',
+    'Pre-Test Accessed At',
     'Pre-Test Finished At',
+    'Pre-Test Time Taken',
     'Post-Test Score (/20)',
     'Post-Test %',
+    'Post-Test Accessed At',
     'Post-Test Finished At',
+    'Post-Test Time Taken',
     'Net Score Gain (+/-)',
     'Percentage Gain (%)',
     'Test Status',
@@ -79,16 +114,23 @@ export function generateTestsCsv(
 
   studentCodes.forEach((code) => {
     const s = unifiedMap[code];
-    const pre = s.pretest;
-    const post = s.posttest;
+    const pre = s.pretest as any;
+    const post = s.posttest as any;
+
+    const preStartRaw = pre?.startedAt || pre?.accessedAt;
+    const postStartRaw = post?.startedAt || post?.accessedAt;
 
     const preScore = pre ? String(pre.score) : '–';
     const prePct = pre ? `${Math.round((pre.score / pre.total) * 100)}%` : '–';
-    const preDate = pre ? formatDateOnly(pre.finishedAt) : '–';
+    const preStarted = preStartRaw ? formatDateTime(preStartRaw) : '–';
+    const preFinished = pre?.finishedAt ? formatDateTime(pre.finishedAt) : '–';
+    const preDuration = formatTimeTaken(preStartRaw, pre?.finishedAt);
 
     const postScore = post ? String(post.score) : '–';
     const postPct = post ? `${Math.round((post.score / post.total) * 100)}%` : '–';
-    const postDate = post ? formatDateOnly(post.finishedAt) : '–';
+    const postStarted = postStartRaw ? formatDateTime(postStartRaw) : '–';
+    const postFinished = post?.finishedAt ? formatDateTime(post.finishedAt) : '–';
+    const postDuration = formatTimeTaken(postStartRaw, post?.finishedAt);
 
     let diff = '–';
     let pctGain = '–';
@@ -132,10 +174,14 @@ export function generateTestsCsv(
         s.grade,
         preScore,
         prePct,
-        preDate,
+        preStarted,
+        preFinished,
+        preDuration,
         postScore,
         postPct,
-        postDate,
+        postStarted,
+        postFinished,
+        postDuration,
         diff,
         pctGain,
         testStatus,
@@ -166,8 +212,12 @@ export function generateTestsCsv(
         avgPre,
         preCount > 0 ? `${Math.round((Number(avgPre) / 20) * 100)}%` : '–',
         '–',
+        '–',
+        '–',
         avgPost,
         postCount > 0 ? `${Math.round((Number(avgPost) / 20) * 100)}%` : '–',
+        '–',
+        '–',
         '–',
         avgGain,
         '–',
@@ -188,7 +238,7 @@ export function generateTestsCsv(
 
 /**
  * 2. DEDICATED SESSION PROGRESS CSV
- * Contains only Missions/Sessions 1 to 5 status, completion dates, and progress rates.
+ * Contains Missions/Sessions 1 to 5 status, access/completion times, time taken, and progress rates.
  */
 export function generateSessionsCsv(
   records: StudentRecord[],
@@ -200,7 +250,7 @@ export function generateSessionsCsv(
   const studentCodes = Object.keys(unifiedMap).sort();
 
   lines.push('=== GRAMCO - SESSIONS & LEARNING MISSIONS PROGRESS REPORT ===');
-  lines.push(`Generated: ${new Date().toISOString()}`);
+  lines.push(`Generated: ${formatDateTime(new Date().toISOString())}`);
   lines.push('');
 
   const headers = [
@@ -208,15 +258,25 @@ export function generateSessionsCsv(
     'Sex',
     'Grade & Section',
     'Session 1: Completeness of Thought',
+    'Session 1 Accessed At',
     'Session 1 Completed At',
+    'Session 1 Time Taken',
     'Session 2: Word Order & Arrangement',
+    'Session 2 Accessed At',
     'Session 2 Completed At',
+    'Session 2 Time Taken',
     'Session 3: Subject-Verb Agreement',
+    'Session 3 Accessed At',
     'Session 3 Completed At',
+    'Session 3 Time Taken',
     'Session 4: Punctuation & Capitalization',
+    'Session 4 Accessed At',
     'Session 4 Completed At',
+    'Session 4 Time Taken',
     'Session 5: Putting It All Together',
+    'Session 5 Accessed At',
     'Session 5 Completed At',
+    'Session 5 Time Taken',
     'Total Missions Completed (/5)',
     'Completion Rate %',
     'Curriculum Status',
@@ -234,16 +294,22 @@ export function generateSessionsCsv(
     let completedCount = 0;
 
     MISSIONS.forEach((m) => {
-      const pItem = prog[m.key];
+      const pItem = prog[m.key] as any;
+      const startedAt =
+        pItem && typeof pItem === 'object'
+          ? pItem.startedAt || pItem.accessedAt || ''
+          : '';
       const completedAt =
         pItem && typeof pItem === 'object' && 'completedAt' in pItem
-          ? (pItem as any).completedAt
+          ? pItem.completedAt
           : '';
       const isDone = Boolean(completedAt);
       if (isDone) completedCount += 1;
 
-      sessionCols.push(isDone ? 'COMPLETED' : 'Pending');
-      sessionCols.push(completedAt || '–');
+      sessionCols.push(isDone ? 'COMPLETED' : startedAt ? 'In Progress' : 'Pending');
+      sessionCols.push(startedAt ? formatDateTime(startedAt) : '–');
+      sessionCols.push(completedAt ? formatDateTime(completedAt) : '–');
+      sessionCols.push(formatTimeTaken(startedAt, completedAt));
     });
 
     totalCompletedAll += completedCount;
@@ -277,16 +343,11 @@ export function generateSessionsCsv(
         'CLASS SUMMARY',
         '–',
         `Total Students: ${studentCodes.length}`,
-        '–',
-        '–',
-        '–',
-        '–',
-        '–',
-        '–',
-        '–',
-        '–',
-        '–',
-        '–',
+        '–', '–', '–', '–',
+        '–', '–', '–', '–',
+        '–', '–', '–', '–',
+        '–', '–', '–', '–',
+        '–', '–', '–', '–',
         `${(totalCompletedAll / studentCodes.length).toFixed(1)}/5`,
         classAvgRate,
         'Active Cohort',
@@ -304,7 +365,7 @@ export function generateSessionsCsv(
 export function generateItemAnalysisCsv(records: StudentRecord[]): string {
   const lines: string[] = [];
   lines.push('=== GRAMCO - ITEM ANALYSIS & DEPED DIFFICULTY DIAGNOSTIC REPORT ===');
-  lines.push(`Generated: ${new Date().toISOString()}`);
+  lines.push(`Generated: ${formatDateTime(new Date().toISOString())}`);
   lines.push('');
 
   // Pre-test section
@@ -434,7 +495,7 @@ export function generateMasterCsv(
   lines.push('================================================================================');
   lines.push('   GRAMCO COMPLETE EVALUATION REPORT - SEPARATED SCORES & SESSION PROGRESS     ');
   lines.push('================================================================================');
-  lines.push(`Generated: ${new Date().toISOString()}`);
+  lines.push(`Generated: ${formatDateTime(new Date().toISOString())}`);
   lines.push(`Total Registered Students: ${studentCodes.length}`);
   lines.push(`Total Test Submissions: ${records.length}`);
   lines.push('');
@@ -452,10 +513,14 @@ export function generateMasterCsv(
       'Grade & Section',
       'Pre-Test Score (/20)',
       'Pre-Test %',
-      'Pre-Test Date Finished',
+      'Pre-Test Accessed At',
+      'Pre-Test Finished At',
+      'Pre-Test Time Taken',
       'Post-Test Score (/20)',
       'Post-Test %',
-      'Post-Test Date Finished',
+      'Post-Test Accessed At',
+      'Post-Test Finished At',
+      'Post-Test Time Taken',
       'Score Gain (+/-)',
       'Percentage Gain (%)',
       'Evaluation Status',
@@ -469,16 +534,23 @@ export function generateMasterCsv(
 
   studentCodes.forEach((code) => {
     const s = unifiedMap[code];
-    const pre = s.pretest;
-    const post = s.posttest;
+    const pre = s.pretest as any;
+    const post = s.posttest as any;
+
+    const preStartRaw = pre?.startedAt || pre?.accessedAt;
+    const postStartRaw = post?.startedAt || post?.accessedAt;
 
     const preScore = pre ? String(pre.score) : '–';
     const prePct = pre ? `${Math.round((pre.score / pre.total) * 100)}%` : '–';
-    const preDate = pre ? formatDateOnly(pre.finishedAt) : '–';
+    const preStarted = preStartRaw ? formatDateTime(preStartRaw) : '–';
+    const preFinished = pre?.finishedAt ? formatDateTime(pre.finishedAt) : '–';
+    const preDuration = formatTimeTaken(preStartRaw, pre?.finishedAt);
 
     const postScore = post ? String(post.score) : '–';
     const postPct = post ? `${Math.round((post.score / post.total) * 100)}%` : '–';
-    const postDate = post ? formatDateOnly(post.finishedAt) : '–';
+    const postStarted = postStartRaw ? formatDateTime(postStartRaw) : '–';
+    const postFinished = post?.finishedAt ? formatDateTime(post.finishedAt) : '–';
+    const postDuration = formatTimeTaken(postStartRaw, post?.finishedAt);
 
     let diff = '–';
     let pctGain = '–';
@@ -510,10 +582,14 @@ export function generateMasterCsv(
         s.grade,
         preScore,
         prePct,
-        preDate,
+        preStarted,
+        preFinished,
+        preDuration,
         postScore,
         postPct,
-        postDate,
+        postStarted,
+        postFinished,
+        postDuration,
         diff,
         pctGain,
         status,
@@ -537,8 +613,12 @@ export function generateMasterCsv(
         avgPre,
         preCount > 0 ? `${Math.round((Number(avgPre) / 20) * 100)}%` : '–',
         '–',
+        '–',
+        '–',
         avgPost,
         postCount > 0 ? `${Math.round((Number(avgPost) / 20) * 100)}%` : '–',
+        '–',
+        '–',
         '–',
         avgGain,
         '–',
@@ -560,15 +640,25 @@ export function generateMasterCsv(
       'Sex',
       'Grade & Section',
       'Session 1 (Thought) Status',
+      'Session 1 Accessed At',
       'Session 1 Completed At',
+      'Session 1 Time Taken',
       'Session 2 (Word Order) Status',
+      'Session 2 Accessed At',
       'Session 2 Completed At',
+      'Session 2 Time Taken',
       'Session 3 (SVA) Status',
+      'Session 3 Accessed At',
       'Session 3 Completed At',
+      'Session 3 Time Taken',
       'Session 4 (Punctuation) Status',
+      'Session 4 Accessed At',
       'Session 4 Completed At',
+      'Session 4 Time Taken',
       'Session 5 (Builder) Status',
+      'Session 5 Accessed At',
       'Session 5 Completed At',
+      'Session 5 Time Taken',
       'Total Missions Completed (/5)',
       'Session Completion Rate %',
       'Overall Session Status',
@@ -584,16 +674,22 @@ export function generateMasterCsv(
     let completedCount = 0;
 
     MISSIONS.forEach((m) => {
-      const pItem = prog[m.key];
+      const pItem = prog[m.key] as any;
+      const startedAt =
+        pItem && typeof pItem === 'object'
+          ? pItem.startedAt || pItem.accessedAt || ''
+          : '';
       const completedAt =
         pItem && typeof pItem === 'object' && 'completedAt' in pItem
-          ? (pItem as any).completedAt
+          ? pItem.completedAt
           : '';
       const isDone = Boolean(completedAt);
       if (isDone) completedCount += 1;
 
-      sessionCols.push(isDone ? 'COMPLETED' : 'Pending');
-      sessionCols.push(completedAt || '–');
+      sessionCols.push(isDone ? 'COMPLETED' : startedAt ? 'In Progress' : 'Pending');
+      sessionCols.push(startedAt ? formatDateTime(startedAt) : '–');
+      sessionCols.push(completedAt ? formatDateTime(completedAt) : '–');
+      sessionCols.push(formatTimeTaken(startedAt, completedAt));
     });
 
     classSessionsDone += completedCount;
@@ -623,16 +719,11 @@ export function generateMasterCsv(
         'CLASS SUMMARY',
         '–',
         `Total: ${studentCodes.length}`,
-        '–',
-        '–',
-        '–',
-        '–',
-        '–',
-        '–',
-        '–',
-        '–',
-        '–',
-        '–',
+        '–', '–', '–', '–',
+        '–', '–', '–', '–',
+        '–', '–', '–', '–',
+        '–', '–', '–', '–',
+        '–', '–', '–', '–',
         `${classAvgMissions}/5`,
         classAvgPct,
         'Active Cohort',
