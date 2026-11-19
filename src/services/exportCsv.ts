@@ -19,6 +19,19 @@ export const formatRow = (cells: any[]): string => {
   return cells.map(escapeCell).join(',');
 };
 
+export const formatDateOnly = (dateStr?: string): string => {
+  if (!dateStr) return '–';
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return dateStr;
+
+  return date.toLocaleDateString('en-PH', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+  });
+};
+
 /**
  * 1. DEDICATED TEST SCORES CSV
  * Contains only Pre-Test and Post-Test scores, gains, dates, and per-skill breakdowns.
@@ -71,11 +84,11 @@ export function generateTestsCsv(
 
     const preScore = pre ? String(pre.score) : '–';
     const prePct = pre ? `${Math.round((pre.score / pre.total) * 100)}%` : '–';
-    const preDate = pre ? pre.finishedAt : '–';
+    const preDate = pre ? formatDateOnly(pre.finishedAt) : '–';
 
     const postScore = post ? String(post.score) : '–';
     const postPct = post ? `${Math.round((post.score / post.total) * 100)}%` : '–';
-    const postDate = post ? post.finishedAt : '–';
+    const postDate = post ? formatDateOnly(post.finishedAt) : '–';
 
     let diff = '–';
     let pctGain = '–';
@@ -461,11 +474,11 @@ export function generateMasterCsv(
 
     const preScore = pre ? String(pre.score) : '–';
     const prePct = pre ? `${Math.round((pre.score / pre.total) * 100)}%` : '–';
-    const preDate = pre ? pre.finishedAt : '–';
+    const preDate = pre ? formatDateOnly(pre.finishedAt) : '–';
 
     const postScore = post ? String(post.score) : '–';
     const postPct = post ? `${Math.round((post.score / post.total) * 100)}%` : '–';
-    const postDate = post ? post.finishedAt : '–';
+    const postDate = post ? formatDateOnly(post.finishedAt) : '–';
 
     let diff = '–';
     let pctGain = '–';
